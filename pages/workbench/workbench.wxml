@@ -1,0 +1,666 @@
+<!-- workbench.wxml —— SPA：左侧图标栏 + 主内容区，按 section 切换（对齐源 LifePlan） -->
+<view class="app" style="background:{{bgGradient}};{{themeStyle}}">
+
+  <!-- 欢迎页（每次进入都展示，点击「开始今天」进入主页） -->
+  <view wx:if="{{welcomeOpen}}" class="welcome" style="background:{{bgGradient}};">
+    <view class="welcome-card">
+      <image class="welcome-avatar" src="{{userAvatar}}" mode="aspectFill" />
+      <view class="welcome-date">{{dateText}}</view>
+      <view class="welcome-greet">{{welcomeGreeting}}，{{userName}}</view>
+      <view class="welcome-quote">{{welcomeQuote}}</view>
+      <view class="welcome-tip">{{welcomeTip}}</view>
+      <button class="welcome-btn" bindtap="enterApp">开始今天 ✨</button>
+    </view>
+  </view>
+
+  <!-- 左侧图标栏 -->
+  <view class="sidebar {{railOpen ? '' : 'rail-hidden'}}">
+    <view class="brand" bindtap="openProfile">
+      <image class="brand-avatar" src="{{userAvatar}}" mode="aspectFill" />
+      <view class="brand-name">{{userName}}</view>
+    </view>
+    <view class="nav">
+      <view wx:for="{{navMain}}" wx:key="key" class="nav-item {{section===item.key?'active':''}}" data-key="{{item.key}}" bindtap="switchSection">
+        <text class="icon">{{item.icon}}</text>
+        <text class="nav-label">{{item.label}}</text>
+      </view>
+    </view>
+    <view class="nav-sep"></view>
+    <view class="nav">
+      <view wx:for="{{navBottom}}" wx:key="key" class="nav-item {{item.special?'nav-special':''}} {{section===item.key?'active':''}}" data-key="{{item.key}}" bindtap="switchSection">
+        <text class="icon">{{item.icon}}</text>
+        <text class="nav-label">{{item.label}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 主内容区 -->
+  <view class="main {{railOpen ? '' : 'rail-hidden'}}">
+    <view class="topbar" style="background:linear-gradient(180deg, {{bg1}}, {{bg2}});">
+      <view class="topbar-left">
+        <view class="menu-btn" bindtap="toggleRail">☰</view>
+        <text class="page-title">{{pageTitle}}</text>
+      </view>
+      <view class="checkin-btn" bindtap="onCheckin">✓ 今日打卡</view>
+    </view>
+
+    <view class="content">
+
+      <!-- 仪表盘首页 -->
+      <block wx:if="{{section==='dashboard'}}">
+        <view class="hero">
+          <view class="hero-text">
+            <view class="hero-badge">{{dateText}}</view>
+            <view class="hero-title">{{userName}}，今天也要轻盈地完成目标</view>
+            <view class="hero-sub">{{phrase}}</view>
+            <view class="hero-done">{{done}}/{{total}} 已完成</view>
+          </view>
+          <view class="hero-progress">
+            <view class="ring-wrap" hidden="{{aiOpen}}">
+              <canvas type="2d" id="ringCanvas" class="ring"></canvas>
+              <view class="ring-center">
+                <view class="ring-pct">{{pct}}%</view>
+                <view class="ring-label">今日进度</view>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view class="section-title"><text class="en">TODAY</text>今日完成情况</view>
+        <view class="grid2">
+          <view class="dash-card" wx:for="{{cards}}" wx:key="id" data-key="{{item.key}}" bindtap="switchSection">
+            <text class="emoji">{{item.icon}}</text>
+            <text class="title">{{item.name}}</text>
+            <text class="desc">{{item.status}}</text>
+          </view>
+        </view>
+      </block>
+
+      <!-- 待办清单（三段：今日 / 近期 / 以后） -->
+      <block wx:if="{{section==='daily_todo'}}">
+        <view class="section-title"><text class="en">TODO</text>待办清单</view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">📋</text><view class="card-title">待办清单</view><view class="card-sub" style="margin-left:auto;">{{todoCount}}</view></view>
+          <!-- 分类（带图标） -->
+          <view class="chips">
+            <view wx:for="{{todoCats}}" wx:key="name" class="chip {{todoCat===item.name?'active':''}}" data-cat="{{item.name}}" data-icon="{{item.icon}}" bindtap="setTodoCat">
+              <text class="chip-ico">{{item.icon}}</text>{{item.name}}
+            </view>
+          </view>
+
+          <!-- 今日待办 -->
+          <view class="bucket">
+            <view class="bucket-head"><text class="bucket-title">📌 今日待办</text><text class="bucket-count">{{todoTodayCount}}</text></view>
+            <view class="input-row">
+              <input class="input" placeholder="添加今日待办…" value="{{newTodo}}" bindinput="onTodoInput" />
+              <button class="btn sm" bindtap="addTodo" data-bucket="today">添加</button>
+            </view>
+            <view class="list">
+              <view class="list-item {{item.done?'done':''}}" wx:for="{{todoToday}}" wx:key="_id">
+                <view class="item-check {{item.done?'on':''}}" data-id="{{item._id}}" bindtap="toggleTodo">✓</view>
+                <view class="item-main"><view class="title-row">{{item.content}}</view><view class="meta">{{item.cat}}</view></view>
+                <view class="del-btn" data-id="{{item._id}}" bindtap="delTodo">×</view>
+              </view>
+              <view wx:if="{{todoToday.length===0}}" class="empty">今天还没有待办</view>
+            </view>
+          </view>
+
+          <!-- 近期待办（7 天内） -->
+          <view class="bucket">
+            <view class="bucket-head"><text class="bucket-title">⏰ 近期待办（7天内）</text><text class="bucket-count">{{todoSoonCount}}</text></view>
+            <view class="input-row">
+              <picker mode="date" value="{{todoSoonDate}}" bindchange="onTodoSoonDate" class="picker-grow">
+                <view class="input picker">{{todoSoonDate || '📅'}}</view>
+              </picker>
+              <input class="input" placeholder="内容" value="{{todoInlineSoon}}" data-bucket="soon" bindinput="onTodoInline" style="flex:1;" />
+              <button class="btn sm" bindtap="addTodoInline" data-bucket="soon">添加</button>
+            </view>
+            <view class="list">
+              <view class="list-item {{item.done?'done':''}}" wx:for="{{todoSoon}}" wx:key="_id">
+                <view class="item-check {{item.done?'on':''}}" data-id="{{item._id}}" bindtap="toggleTodo">✓</view>
+                <view class="item-main"><view class="title-row">{{item.content}}</view><view class="meta">{{item.cat}} · {{item.dueDate}}</view></view>
+                <view class="del-btn" data-id="{{item._id}}" bindtap="delTodo">×</view>
+              </view>
+              <view wx:if="{{todoSoon.length===0}}" class="empty">近 7 天还没有安排</view>
+            </view>
+          </view>
+
+          <!-- 以后 / 不限时间 -->
+          <view class="bucket">
+            <view class="bucket-head"><text class="bucket-title">🗓️ 以后 / 不限时间</text><text class="bucket-count">{{todoLaterCount}}</text></view>
+            <view class="input-row">
+              <picker mode="selector" range="{{todoLaterRange}}" value="{{todoLaterRangeIdx}}" bindchange="onTodoLaterRange" class="picker-grow">
+                <view class="input picker">{{todoLaterRange[todoLaterRangeIdx] || todoLaterRange[5]}}</view>
+              </picker>
+              <input class="input" placeholder="内容" value="{{todoInlineLater}}" data-bucket="later" bindinput="onTodoInline" style="flex:1;" />
+              <button class="btn sm" bindtap="addTodoInline" data-bucket="later">添加</button>
+            </view>
+            <view class="list">
+              <view class="list-item {{item.done?'done':''}}" wx:for="{{todoLater}}" wx:key="_id">
+                <view class="item-check {{item.done?'on':''}}" data-id="{{item._id}}" bindtap="toggleTodo">✓</view>
+                <view class="item-main"><view class="title-row">{{item.content}}</view><view class="meta">{{item.cat}} · {{item.dueDate || '不限'}}</view></view>
+                <view class="del-btn" data-id="{{item._id}}" bindtap="delTodo">×</view>
+              </view>
+              <view wx:if="{{todoLater.length===0}}" class="empty">还没有以后要做的事</view>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <!-- 体重记录（日期切换 + 早晨/晚上 + 三统计 + 折线图 + 历史） -->
+      <block wx:if="{{section==='weight'}}">
+        <view class="section-title">
+          <text class="en">WEIGHT</text>体重记录
+          <view wx:if="{{wDoneToday}}" class="check-pill">✓ 今日已打卡</view>
+        </view>
+        <view class="card">
+          <view class="card-header">
+            <text class="card-icon">⚖️</text>
+            <view class="card-title">体重记录</view>
+            <text class="card-sub" style="margin-left:auto;">{{wTodayDateCN}}</text>
+          </view>
+          <view class="input-row">
+            <picker mode="date" value="{{wDate}}" bindchange="onWDate" style="flex:1;">
+              <view class="input picker">{{wDate || '📅'}}</view>
+            </picker>
+          </view>
+          <view class="weight-row">
+            <text class="wr-icon">🌅</text>
+            <text class="wr-label">晨起体重</text>
+            <text class="wr-unit">斤</text>
+            <input class="input wr-input" type="digit" placeholder="--" value="{{wMorning}}" bindinput="onWM" />
+            <button class="btn sm" bindtap="saveMorning">记录</button>
+          </view>
+          <view class="weight-row">
+            <text class="wr-icon">🌙</text>
+            <text class="wr-label">睡前体重</text>
+            <text class="wr-unit">斤</text>
+            <input class="input wr-input" type="digit" placeholder="--" value="{{wEvening}}" bindinput="onWE" />
+            <button class="btn sm" bindtap="saveEvening">记录</button>
+          </view>
+          <view class="summary">
+            <view class="summary-box"><view class="num">{{wTodayMax}}</view><view class="label">今日最重</view></view>
+            <view class="summary-box"><view class="num">{{wTodayE}}</view><view class="label">今晚体重</view></view>
+            <view class="summary-box"><view class="num">{{wDiff}}</view><view class="label">日间波动</view></view>
+          </view>
+          <view class="chart-legend">
+            <view class="lg-item"><view class="lg-swatch morning"></view>晨起</view>
+            <view class="lg-item"><view class="lg-swatch evening"></view>睡前</view>
+          </view>
+          <view class="chart-box" hidden="{{aiOpen}}"><canvas type="2d" id="weightChart" class="chart"></canvas></view>
+          <view class="card-sub" style="margin: 6px 0;">历史记录（{{wHistoryCount}} 天）</view>
+          <view class="list">
+            <view class="list-item" wx:for="{{wHistory}}" wx:key="_id">
+              <view class="item-main">
+                <view class="title-row">{{item.date}}</view>
+                <view class="meta">晨 {{item.morning||'--'}} · 晚 {{item.evening||'--'}} 斤</view>
+              </view>
+              <view class="list-actions">
+                <view class="icon-btn edit" hover-class="btn-active" data-id="{{item._id}}" data-date="{{item.date}}" data-morning="{{item.morning}}" data-evening="{{item.evening}}" bindtap="onEditWeight">✏️</view>
+                <view class="icon-btn del" hover-class="btn-active" data-id="{{item._id}}" data-date="{{item.date}}" bindtap="onDelWeight">🗑️</view>
+              </view>
+            </view>
+            <view wx:if="{{wHistory.length===0}}" class="empty"><view class="empty-icon">⚖️</view>还没有体重记录</view>
+          </view>
+        </view>
+
+        <!-- 体重编辑弹窗 -->
+        <view wx:if="{{wEditOpen}}" class="modal-mask" catchtap="closeEditWeight">
+          <view class="modal-card" catchtap="noop">
+            <view class="modal-head">
+              <view class="modal-title">编辑体重记录</view>
+              <view class="modal-close" bindtap="closeEditWeight">×</view>
+            </view>
+            <view class="meta" style="margin-bottom:10px;">日期：{{wEditDate}}</view>
+            <view class="weight-row">
+              <text class="wr-icon">🌅</text>
+              <text class="wr-label">晨起体重</text>
+              <text class="wr-unit">斤</text>
+              <input class="input wr-input" type="digit" placeholder="--" value="{{wEditMorning}}" bindinput="onEditWM" />
+            </view>
+            <view class="weight-row">
+              <text class="wr-icon">🌙</text>
+              <text class="wr-label">睡前体重</text>
+              <text class="wr-unit">斤</text>
+              <input class="input wr-input" type="digit" placeholder="--" value="{{wEditEvening}}" bindinput="onEditWE" />
+            </view>
+            <view style="display:flex;gap:10px;margin-top:16px;">
+              <button class="btn ghost" bindtap="closeEditWeight" style="flex:1;">取消</button>
+              <button class="btn primary" bindtap="confirmEditWeight" style="flex:1;">保存</button>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <!-- 五行穿衣（lunar-javascript 日柱干支 + 五行循环映射 → 5级颜色） -->
+      <block wx:if="{{section==='wuxing'}}">
+        <view class="section-title"><text class="en">OUTFIT</text>每日五行穿衣颜色</view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">🔮</text><view class="card-title">每日五行穿衣颜色</view></view>
+          <view class="meta-row" style="font-size:13px;color:var(--muted);margin-bottom:10px;">{{wxData.dateCN}}</view>
+          <view class="chips">
+            <view wx:for="{{wxDays}}" wx:key="*this" class="chip {{wxDayIdx===index?'active':''}}" data-idx="{{index}}" bindtap="setWxDay">{{item}}</view>
+          </view>
+          <view wx:if="{{wxData}}">
+            <view class="wux-date">{{wxData.monthDay}} · {{wxData.weekday}}</view>
+            <view class="wux-pillar">日柱 {{wxData.ganzhi}} · 纳音 {{wxData.nayin}} · 当日五行属「{{wxData.element}}」</view>
+            <view wx:for="{{wxData.ranking}}" wx:key="level" wx:for-item="row" class="wux-card">
+              <view class="wux-color" style="background:{{row.hex}};">
+                <text class="wux-icon">{{row.icon}}</text>
+              </view>
+              <view class="wux-info">
+                <view class="wux-line1"><text class="wux-level {{row.cls}}">{{row.level}}</text><text class="wux-tag">《{{row.tag}}》</text></view>
+                <view class="wux-line2">五行属{{row.element}}</view>
+                <view class="wux-line3">{{row.colors}}</view>
+                <view class="wux-line4">{{row.desc}}</view>
+              </view>
+            </view>
+            <view class="wux-footnote">💡 数据由 lunar-javascript 历法库实时计算日柱干支，依据百度百科「五行穿衣」标准算法（日支五行 + 五行生克）生成，非随机生成。</view>
+          </view>
+        </view>
+      </block>
+
+      <!-- 饮食记录 -->
+      <block wx:if="{{section==='diet'}}">
+        <view class="section-title"><text class="en">DIET</text>饮食记录</view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">🍱</text><view class="card-title">饮食记录</view></view>
+          <view class="input-row">
+            <picker mode="selector" range="{{dietMeals}}" value="{{dietMealIndex}}" bindchange="onDietMeal" style="flex:0.5;">
+              <view class="input picker">{{dietMeal}}</view>
+            </picker>
+            <input class="input" type="digit" placeholder="卡路里" value="{{dietCal}}" bindinput="onDietCal" style="flex:0.5;" />
+          </view>
+          <view class="input-row"><input class="input" placeholder="吃了什么" value="{{dietContent}}" bindinput="onDietContent" /><button class="btn sm" bindtap="addDiet">添加</button></view>
+          <button class="btn block" bindtap="onDietPhoto">📷 拍照 / 相册识别（OCR）</button>
+          <view class="hint">💡 拍照或选图可自动识别文字填入上方；也可手动填写。</view>
+          <view class="list">
+            <view class="list-item" wx:for="{{dietList}}" wx:key="_id"><view class="item-main"><view class="title-row">{{item.content}}</view><view class="meta">{{item.meal}} · {{item.calories}} kcal · {{item.date}}</view></view><view class="del-btn" data-id="{{item._id}}" bindtap="delDiet">×</view></view>
+            <view wx:if="{{dietList.length===0}}" class="empty">今天还没记录饮食</view>
+          </view>
+        </view>
+        <!-- 饮食计划（独立 sub-section） -->
+        <view class="card">
+          <view class="card-header"><text class="card-icon">🗒️</text><view class="card-title">饮食计划</view></view>
+          <view class="input-row">
+            <picker mode="date" value="{{dietPlanDate}}" bindchange="onDietPlanDate" style="flex:0.5;">
+              <view class="input picker">{{dietPlanDate || '计划日期'}}</view>
+            </picker>
+            <picker mode="selector" range="{{dietMeals}}" value="{{dietPlanMealIdx}}" bindchange="onDietPlanMeal" style="flex:0.5;">
+              <view class="input picker">{{dietPlanMeal}}</view>
+            </picker>
+          </view>
+          <view class="input-row"><input class="input" placeholder="计划吃什么" value="{{dietPlanContent}}" bindinput="onDietPlanContent" style="flex:1;" /><input class="input" type="digit" placeholder="kcal" value="{{dietPlanCal}}" bindinput="onDietPlanCal" style="flex:0.5;" /></view>
+          <button class="btn block" bindtap="addDietPlan">＋ 添加饮食计划</button>
+          <view class="list">
+            <view class="list-item" wx:for="{{dietPlanList}}" wx:key="_id"><view class="item-main"><view class="title-row">{{item.content}}</view><view class="meta">{{item.meal}} · {{item.calories}} kcal · {{item.date}}</view></view><view class="del-btn" data-id="{{item._id}}" bindtap="delDietPlan">×</view></view>
+            <view wx:if="{{dietPlanList.length===0}}" class="empty">还没有饮食计划</view>
+          </view>
+        </view>
+      </block>
+
+      <!-- 记账（含日期 + 分类下拉） -->
+      <block wx:if="{{section==='accounting'}}">
+        <view class="section-title"><text class="en">MONEY</text>今日记账</view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">💵</text><view class="card-title">今日记账</view></view>
+          <view class="toggle">
+            <view class="toggle-btn {{accType==='expense'?'active':''}}" data-t="expense" bindtap="setAccType">支出</view>
+            <view class="toggle-btn {{accType==='income'?'active':''}}" data-t="income" bindtap="setAccType">收入</view>
+          </view>
+          <view class="input-row">
+            <picker mode="date" value="{{accDate}}" bindchange="onAccDate" style="flex:0.6;">
+              <view class="input picker">{{accDate || '📅'}}</view>
+            </picker>
+            <picker mode="selector" range="{{accType==='expense' ? expenseCats : incomeCats}}" value="{{accCatIdx}}" bindchange="onAccCat" style="flex:0.4;">
+              <view class="input picker">{{accCat}}</view>
+            </picker>
+          </view>
+          <view class="input-row"><input class="input" type="digit" placeholder="金额" value="{{accAmount}}" bindinput="onAccAmount" style="flex:1;" /><button class="btn sm" bindtap="addAcc">记一笔</button></view>
+          <view class="input-row"><input class="input" placeholder="备注（选填）" value="{{accNote}}" bindinput="onAccNote" style="flex:1;" /></view>
+          <view class="summary">
+            <view class="summary-box"><view class="num">{{monthIncome}}</view><view class="label">本月收入</view></view>
+            <view class="summary-box"><view class="num">{{monthExpense}}</view><view class="label">本月支出</view></view>
+            <view class="summary-box"><view class="num">{{monthBalance}}</view><view class="label">结余</view></view>
+          </view>
+          <view class="chart-box" hidden="{{aiOpen}}"><canvas type="2d" id="accChart" class="chart"></canvas></view>
+          <view class="list">
+            <view class="list-item" wx:for="{{accList}}" wx:key="_id"><view class="item-main"><view class="title-row">{{item.note||item.category}}　{{item.amount}}</view><view class="meta">{{item.type==='income'?'收入':'支出'}} · {{item.date}}</view></view><view class="del-btn" data-id="{{item._id}}" bindtap="delAcc">×</view></view>
+            <view wx:if="{{accList.length===0}}" class="empty">本月还没有账目</view>
+          </view>
+        </view>
+      </block>
+
+      <!-- 运动打卡 -->
+      <block wx:if="{{section==='exercise'}}">
+        <view class="section-title"><text class="en">FITNESS</text>运动打卡</view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">🏊‍♀️</text><view class="card-title">运动打卡</view></view>
+          <view class="grid2">
+            <view class="ex-card" wx:for="{{exTypes}}" wx:key="type" data-type="{{item.type}}" bindtap="openEx"><text class="emoji">{{item.emoji}}</text><text class="title">{{item.title}}</text><text class="desc">{{item.desc}}</text><text class="tap">点击输入分钟 ›</text></view>
+          </view>
+          <view class="list">
+            <view class="list-item" wx:for="{{exList}}" wx:key="_id"><view class="item-main"><view class="title-row">{{item.kind}} {{item.minutes}} 分钟</view><view class="meta">{{item.date}}</view></view><view class="del-btn" data-id="{{item._id}}" bindtap="delEx">×</view></view>
+            <view wx:if="{{exList.length===0}}" class="empty">今天还没运动打卡</view>
+          </view>
+        </view>
+      </block>
+
+      <!-- 体态管理（含日历 + 每日一次） -->
+      <block wx:if="{{section==='body'}}">
+        <view class="section-title"><text class="en">POSTURE</text>体态管理</view>
+        <view class="card grad">
+          <view style="font-size:20px;font-weight:800;margin-bottom:4px;">每天 15 分钟体态急救训练</view>
+          <view style="font-size:13px;opacity:.95;margin-bottom:12px;">挺拔体态 · 改善圆肩含胸</view>
+          <button class="btn" style="background:#fff;color:var(--primary-dark);" bindtap="doneBody" disabled="{{bodyDoneToday}}">{{bodyDoneToday ? '今日已打卡 ✓' : '完成今日 15 分钟训练'}}</button>
+        </view>
+        <!-- 日历 -->
+        <view class="card">
+          <view class="card-header"><text class="card-icon">🗓️</text><view class="card-title">{{bodyYear}} 年 {{bodyMonth}} 月 · 打卡日历</view></view>
+          <view class="cal-grid">
+            <view class="cal-cell cal-week">日</view><view class="cal-cell cal-week">一</view><view class="cal-cell cal-week">二</view><view class="cal-cell cal-week">三</view><view class="cal-cell cal-week">四</view><view class="cal-cell cal-week">五</view><view class="cal-cell cal-week">六</view>
+            <view wx:for="{{bodyCalendar}}" wx:key="date" class="cal-cell {{item.done?'done':''}} {{item.isToday?'today':''}}">{{item.day}}</view>
+          </view>
+        </view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">🩰</text><view class="card-title">训练记录</view></view>
+          <view class="list"><view class="list-item" wx:for="{{bodyList}}" wx:key="_id"><view class="item-main"><view class="title-row">已完成 15 分钟</view><view class="meta">{{item.date}}</view></view></view><view wx:if="{{bodyList.length===0}}" class="empty">还没训练记录</view></view>
+        </view>
+      </block>
+
+      <!-- 心情日记（含动态变化折线图） -->
+      <block wx:if="{{section==='mood'}}">
+        <view class="section-title"><text class="en">MOOD</text>心情日记</view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">🥰</text><view class="card-title">心情日记</view></view>
+          <view class="mood-row">
+            <view wx:for="{{moodEmojis}}" wx:key="*this" class="mood-emoji {{mood===item?'selected':''}}" data-m="{{item}}" bindtap="setMood">{{item}}</view>
+          </view>
+          <textarea class="input" placeholder="今天的心情…" value="{{moodText}}" bindinput="onMoodText" style="height:80px;"></textarea>
+          <button class="btn block" bindtap="saveMood">保存心情</button>
+          <view class="chart-box" hidden="{{aiOpen}}"><canvas type="2d" id="moodChart" class="chart"></canvas></view>
+          <view class="list"><view class="list-item" wx:for="{{moodList}}" wx:key="_id"><view class="item-main"><view class="title-row">{{item.emoji}} {{item.text}}</view><view class="meta">{{item.date}}</view></view><view class="del-btn" data-id="{{item._id}}" bindtap="delMood">×</view></view><view wx:if="{{moodList.length===0}}" class="empty">还没有心情记录</view></view>
+        </view>
+      </block>
+
+      <!-- 感受体验（含编辑） -->
+      <block wx:if="{{section==='feeling'}}">
+        <view class="section-title"><text class="en">FEELING</text>感受体验</view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">📜</text><view class="card-title">感受体验</view><view class="card-sub" style="margin-left:auto;">{{feelingCount}}</view></view>
+          <textarea class="input" placeholder="写下今日感受…" value="{{feelingText}}" bindinput="onFeeling" style="height:90px;"></textarea>
+          <view class="input-row">
+            <button wx:if="{{!feelingEditing}}" class="btn block" style="flex:1;" bindtap="saveFeeling">记录感受</button>
+            <block wx:else>
+              <button class="btn block" style="flex:1;background:var(--primary);" bindtap="saveFeeling">保存修改</button>
+              <button class="btn sm" style="background:var(--tint);color:var(--primary-dark);" bindtap="cancelEditFeeling">取消</button>
+            </block>
+          </view>
+          <view class="list"><view class="list-item" wx:for="{{feelingList}}" wx:key="_id"><view class="item-main"><view class="title-row">{{item.content}}</view><view class="meta">{{item.date}}</view></view><view class="feeling-ops"><view class="feeling-edit" data-id="{{item._id}}" bindtap="editFeeling">✎ 编辑</view><view class="del-btn" data-id="{{item._id}}" bindtap="delFeeling">×</view></view></view><view wx:if="{{feelingList.length===0}}" class="empty">还没有感受记录</view></view>
+        </view>
+      </block>
+
+      <!-- 自媒体灵感（7 平台下拉 + 3 状态） -->
+      <block wx:if="{{section==='media'}}">
+        <view class="section-title"><text class="en">MEDIA</text>自媒体灵感</view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">💡</text><view class="card-title">自媒体灵感</view><view class="card-sub" style="margin-left:auto;">{{mediaCount}}</view></view>
+          <view class="input-row">
+            <picker mode="selector" range="{{mediaPlatforms}}" value="{{mediaPlatformIdx}}" bindchange="onMediaPlat" style="flex:0.6;">
+              <view class="input picker">{{mediaPlatforms[mediaPlatformIdx]}}</view>
+            </picker>
+            <input class="input" placeholder="标题" value="{{mediaTitle}}" bindinput="onMediaTitle" style="flex:1;" />
+          </view>
+          <textarea class="input" placeholder="内容/灵感…" value="{{mediaContent}}" bindinput="onMediaContent" style="height:70px;"></textarea>
+          <view class="chips" style="margin-top:10px;">
+            <view wx:for="{{mediaStatusList}}" wx:key="*this" class="chip {{mediaStatusIdx===index?'active':''}}" data-idx="{{index}}" bindtap="setMediaStatus">{{item}}</view>
+          </view>
+          <button class="btn block" bindtap="saveMedia">保存自媒体记录</button>
+        </view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">📋</text><view class="card-title">我的自媒体记录</view></view>
+          <view class="list"><view class="list-item" wx:for="{{mediaList}}" wx:key="_id"><view class="item-main"><view class="title-row">{{item.title}}（{{item.platform}}）</view><view class="meta">{{item.status}} · {{item.date}}</view></view><view class="del-btn" data-id="{{item._id}}" bindtap="delMedia">×</view></view><view wx:if="{{mediaList.length===0}}" class="empty">还没有记录</view></view>
+        </view>
+      </block>
+
+      <!-- 年度目标（6 类下拉） -->
+      <block wx:if="{{section==='goals'}}">
+        <view class="section-title"><text class="en">GOALS</text>年度目标</view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">🧸</text><view class="card-title">年度目标</view><view class="card-sub" style="margin-left:auto;">{{goalsCount}}</view></view>
+          <view class="input-row">
+            <input class="input" placeholder="目标内容" value="{{goalText}}" bindinput="onGoalText" style="flex:1;" />
+            <picker mode="selector" range="{{goalCats}}" value="{{goalCatIdx}}" bindchange="onGoalCat" style="flex:0.55;">
+              <view class="input picker">{{goalCats[goalCatIdx]}}</view>
+            </picker>
+          </view>
+          <button class="btn block" bindtap="addGoal">添加</button>
+          <view class="hint">💡 点圆圈标记完成；用 ↑ / ↓ 调整顺序。</view>
+          <view class="list"><view class="list-item {{item.done?'done':''}}" wx:for="{{goalsList}}" wx:key="_id"><view class="item-check {{item.done?'on':''}}" data-id="{{item._id}}" bindtap="toggleGoal">✓</view><view class="item-main"><view class="title-row">{{item.text}}</view><view class="meta">{{item.category}}</view></view><view class="goal-ops"><view class="goal-move" data-id="{{item._id}}" data-dir="up" bindtap="moveGoal">↑</view><view class="goal-move" data-id="{{item._id}}" data-dir="down" bindtap="moveGoal">↓</view></view><view class="del-btn" data-id="{{item._id}}" bindtap="delGoal">×</view></view><view wx:if="{{goalsList.length===0}}" class="empty">还没有目标</view></view>
+        </view>
+      </block>
+
+      <!-- 每日英语（随机 5 口语 + 5 词汇；可回看上一天 / 下一天） -->
+      <block wx:if="{{section==='english'}}">
+        <view class="section-title"><text class="en">ENGLISH</text>每日英语练习</view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">💬</text><view class="card-title">每日英语练习</view></view>
+          <view class="en-nav">
+            <view class="en-nav-btn" bindtap="englishPrev">‹ 前一天</view>
+            <view class="en-nav-mid" wx:if="{{englishOffset===0}}">今天</view>
+            <view class="en-nav-mid" wx:else>{{englishOffset>0 ? '第 '+englishOffset+' 天后' : '第 '+(-englishOffset)+' 天前'}}</view>
+            <view class="en-nav-btn" bindtap="englishNext">后一天 ›</view>
+          </view>
+          <view wx:if="{{englishOffset!==0}}" class="en-backtoday" bindtap="englishToday">回到今天</view>
+          <view class="en-block-title">🗣️ 今日口语（点 🔊 跟读）</view>
+          <view class="en-card" wx:for="{{englishPhrases}}" wx:key="en" wx:for-item="p">
+            <view class="en-card-top">
+              <view class="en-en">{{p.en}}</view>
+              <view class="speak-btn" data-text="{{p.en}}" bindtap="speakEn">🔊</view>
+            </view>
+            <view class="en-cn">{{p.cn}}</view>
+            <view class="en-ex">💡 {{p.ex}}</view>
+          </view>
+          <view class="en-block-title">📚 今日词汇</view>
+          <view class="en-card" wx:for="{{englishVocab}}" wx:key="en" wx:for-item="v">
+            <view class="en-card-top">
+              <view class="en-en">{{v.en}} <text class="en-ph">{{v.ph}}</text></view>
+              <view class="speak-btn" data-text="{{v.en}}" bindtap="speakEn">🔊</view>
+            </view>
+            <view class="en-cn">{{v.cn}}</view>
+          </view>
+        </view>
+      </block>
+
+      <!-- 旅游规划 -->
+      <block wx:if="{{section==='travel'}}">
+        <view class="section-title"><text class="en">TRAVEL</text>旅游规划</view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">✈️</text><view class="card-title">旅游规划</view></view>
+          <view class="input-row"><input class="input" placeholder="目的地/标题" value="{{travelTitle}}" bindinput="onTravelTitle" style="flex:1;" /></view>
+          <textarea class="input" placeholder="计划/备注…" value="{{travelDesc}}" bindinput="onTravelDesc" style="height:70px;"></textarea>
+          <button class="btn block" bindtap="addTravel">＋ 新建旅行计划</button>
+          <view class="list"><view class="list-item" wx:for="{{travelList}}" wx:key="_id"><view class="item-main"><view class="title-row">{{item.title}}</view><view class="meta">{{item.desc}}</view></view><view class="del-btn" data-id="{{item._id}}" bindtap="delTravel">×</view></view><view wx:if="{{travelList.length===0}}" class="empty">还没有旅行计划</view></view>
+        </view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">📋</text><view class="card-title">导入旅行计划</view><view class="card-sub">粘贴文本或识别截图</view></view>
+          <textarea class="input" placeholder="粘贴行程文本…" value="{{travelPaste}}" bindinput="onTravelPaste" style="height:80px;"></textarea>
+          <button class="btn block" bindtap="importTravel">📝 从文本导入</button>
+          <button class="btn block" bindtap="onTravelPhoto">📷 拍照 / 相册 OCR 识别截图</button>
+          <view class="hint">📷 拍照或选图可自动识别文字填入上方；也可粘贴文本导入。</view>
+        </view>
+
+        <!-- 我的足迹 -->
+        <view class="card">
+          <view class="card-header" style="justify-content:space-between;">
+            <view style="display:flex;align-items:center;gap:10px;"><view class="card-title" style="font-weight:900;font-size:18px;">我的足迹</view></view>
+            <view class="fp-add-btn" bindtap="openFootprintAdd">＋</view>
+          </view>
+          <view class="card-sub" style="margin-bottom:10px;">记录足迹，攒一张自己的人生地图</view>
+          <view class="footprint-stats">
+            <view class="fps-item"><text class="fps-num">{{fpProvinces}}</text><text class="fps-label">省</text></view>
+            <text class="fps-dot">·</text>
+            <view class="fps-item"><text class="fps-num">{{fpCities}}</text><text class="fps-label">城</text></view>
+            <text class="fps-dot">·</text>
+            <view class="fps-item"><text class="fps-num">{{fpCoords}}</text><text class="fps-label">坐标</text></view>
+          </view>
+          <view class="footprint-art" hidden="{{aiOpen}}">
+            <canvas type="2d" id="footprintCanvas" class="footprint-canvas"></canvas>
+          </view>
+          <view class="footprint-timeline">
+            <view wx:for="{{footprintList}}" wx:key="_id" wx:for-item="fp" class="fp-item">
+              <view class="fp-item-main">
+                <view class="fp-item-date">{{fp.date}}</view>
+                <view class="fp-item-name">📍 {{fp.city}}{{fp.note ? ' · ' + fp.note : ''}}</view>
+              </view>
+              <view class="fp-item-del" data-id="{{fp._id}}" bindtap="deleteFootprint">×</view>
+            </view>
+            <view wx:if="{{footprintList.length===0}}" class="card-sub" style="text-align:center;padding:8px;">还没有足迹记录，点击右上角 ＋ 添加</view>
+          </view>
+        </view>
+
+        <!-- 旅行灵感 -->
+        <view class="card">
+          <view class="card-header" style="justify-content:space-between;">
+            <view style="display:flex;align-items:center;gap:10px;"><text class="card-icon">💡</text><view class="card-title">旅行灵感</view></view>
+            <button class="btn sm" bindtap="refreshInspiration">🔄 换一批</button>
+          </view>
+          <view class="list">
+            <view class="list-item" wx:for="{{inspirationList}}" wx:key="name" wx:for-item="ins" style="align-items:flex-start;">
+              <view class="item-main">
+                <view class="title-row">{{ins.name}}</view>
+                <view style="margin:6px 0;">
+                  <text wx:for="{{ins.tags}}" wx:for-item="tag" wx:key="*this" class="chip sm">{{tag}}</text>
+                </view>
+                <view class="meta">{{ins.note}} · {{ins.bestMonth}}</view>
+              </view>
+              <view class="fp-add-btn" data-name="{{ins.name}}" bindtap="addInspirationToTravel" style="flex:0 0 auto;">＋</view>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <!-- 周度分析 -->
+      <block wx:if="{{section==='weekly'}}">
+        <view class="section-title"><text class="en">WEEKLY</text>周度数据分析</view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">🗳️</text><view class="card-title">本周概览</view></view>
+          <view class="summary">
+            <view class="summary-box"><view class="num">{{weekTotal}}</view><view class="label">本周记录</view></view>
+            <view class="summary-box"><view class="num">{{weekTodo}}</view><view class="label">待办事项</view></view>
+            <view class="summary-box"><view class="num">{{weekMood}}</view><view class="label">心情记录</view></view>
+          </view>
+          <view class="hint">{{weekInsight}}</view>
+        </view>
+      </block>
+
+      <!-- 设置 -->
+      <block wx:if="{{section==='settings'}}">
+        <view class="section-title"><text class="en">SETTINGS</text>设置与备份</view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">🎨</text><view class="card-title">背景调色盘</view></view>
+          <view class="bg-row"><text class="bg-label">起始色</text><view class="bg-swatch" style="background:{{bg1}};" bindtap="pickBg1"></view><input class="bg-code-input" type="text" value="{{bg1}}" bindinput="onBg1" placeholder="#EDD5E8" maxlength="7" /></view>
+          <view class="bg-row"><text class="bg-label">结束色</text><view class="bg-swatch" style="background:{{bg2}};" bindtap="pickBg2"></view><input class="bg-code-input" type="text" value="{{bg2}}" bindinput="onBg2" placeholder="#F5DCEE" maxlength="7" /></view>
+          <view class="bg-row"><text class="bg-label">角度</text><picker mode="selector" range="{{bgAngles}}" value="{{bgAngleIdx}}" bindchange="onBgAngleIdx" class="picker-grow"><view class="input picker">{{bgAngles[bgAngleIdx] || bgAngles[1]}}</view></picker></view>
+          <view class="bg-preview" style="background:linear-gradient({{bgAngle}}deg, {{bg1}}, {{bg2}});"></view>
+          <view class="presets">
+            <view wx:for="{{bgPresets}}" wx:key="name" class="preset" data-p="{{item}}" bindtap="applyPreset" style="background:linear-gradient(135deg, {{item.c1}}, {{item.c2}});">{{item.name}}</view>
+          </view>
+          <view class="bg-palette" wx:if="{{showPalette!==''}}">
+            <view class="bg-palette-title">{{showPalette==='bg1'?'选起始色':'选结束色'}}</view>
+            <view class="bg-palette-grid">
+              <view wx:for="{{colorBoard}}" wx:key="hex" class="bg-palette-cell" style="background:{{item.hex}};" data-hex="{{item.hex}}" bindtap="onPickColor"></view>
+            </view>
+            <view class="bg-palette-close" bindtap="hidePalette">收起</view>
+          </view>
+          <view class="input-row" style="margin-top:12px;"><button class="btn" style="flex:1;" bindtap="applyBg">✓ 应用背景</button><button class="btn sm" style="background:var(--tint);color:var(--primary-dark);" bindtap="resetBg">↺ 恢复默认</button></view>
+          <view class="hint" style="margin-top:8px;">背景只对当前页面生效；预设点一下会自动应用；恢复默认会把整页背景与顶栏一起回到原配色。</view>
+        </view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">⚙️</text><view class="card-title">数据备份</view></view>
+          <view class="hint">所有数据保存在云端（按你的微信 OPENID 隔离）。换设备登录同一微信即可同步。</view>
+          <button class="btn block" bindtap="exportBackup">📤 导出备份文件</button>
+          <button class="btn block" style="background:var(--tint);color:var(--primary-dark);" bindtap="importBackup">📥 导入备份文件</button>
+          <button class="btn block" style="background:#EF4444;" bindtap="clearAll">🗑️ 清空所有数据</button>
+        </view>
+        <view class="card">
+          <view class="card-header"><text class="card-icon">🧩</text><view class="card-title">我的模块</view></view>
+          <view class="hint">选择要在首页展示的模块。</view>
+          <button class="btn block" bindtap="goAddons">管理自选模块 ›</button>
+        </view>
+      </block>
+
+    </view>
+  </view>
+
+  <!-- 浮动 AI 按钮 -->
+  <view class="ai-float" bindtap="openAI">🦆</view>
+
+  <!-- AI 智能输入弹窗 -->
+  <view wx:if="{{aiOpen}}" class="modal-mask" bindtap="closeAI">
+    <view class="modal-card" catchtap="noop">
+      <view class="modal-head"><view class="modal-title">🌸 AI 智能输入</view><view class="modal-close" bindtap="closeAI">×</view></view>
+      <view class="card-sub">用中文描述或点🎤语音说出：“跑步30分钟”、“花了50块”、“心情很好”</view>
+      <textarea class="input" placeholder="例如：跑步30分钟" value="{{aiText}}" bindinput="onAiText" style="height:70px;margin:12px 0;"></textarea>
+      <view class="voice-status" wx:if="{{voiceStatus}}">{{voiceStatus}}</view>
+      <view style="display:flex;gap:8px;">
+        <button class="btn" style="flex:1;" bindtap="aiRecognize">识别并确认</button>
+        <button class="voice-btn" style="flex:0 0 auto;" bindtap="toggleVoice">🎤</button>
+      </view>
+      <view wx:if="{{aiPreview}}" class="ai-preview">{{aiPreview}}</view>
+      <button wx:if="{{aiPreview}}" class="btn block" style="margin-top:10px;" bindtap="confirmAI">✓ 确认写入</button>
+    </view>
+  </view>
+
+  <!-- 用户信息弹窗（改头像 / 名称） -->
+  <view wx:if="{{profileOpen}}" class="modal-mask" bindtap="closeProfile">
+    <view class="modal-card" catchtap="noop">
+      <view class="modal-head"><view class="modal-title">👤 我的信息</view><view class="modal-close" bindtap="closeProfile">×</view></view>
+      <view class="profile-avatar-wrap" bindtap="chooseAvatar">
+        <image class="profile-avatar" src="{{userAvatar}}" mode="aspectFill" />
+        <view class="profile-avatar-edit">更换头像</view>
+      </view>
+      <view class="card-sub" style="margin:6px 0 4px;">昵称</view>
+      <input class="input" placeholder="昵称" value="{{profileEditName}}" bindinput="onProfileName" style="margin-bottom:14px;" />
+      <button class="btn block" bindtap="saveProfile">保存</button>
+    </view>
+  </view>
+
+  <!-- 运动分钟弹窗 -->
+  <view wx:if="{{exOpen}}" class="modal-mask" bindtap="closeEx">
+    <view class="modal-card" catchtap="noop">
+      <view class="modal-head"><view class="modal-title">🏃 {{exLabel}} 运动</view><view class="modal-close" bindtap="closeEx">×</view></view>
+      <view class="card-sub">输入运动了多少分钟，系统自动估算消耗卡路里。</view>
+      <input class="input" type="digit" placeholder="分钟" value="{{exMinutes}}" bindinput="onExMinutes" style="margin:12px 0;" />
+      <button class="btn block" bindtap="confirmEx">确认打卡</button>
+    </view>
+  </view>
+
+  <!-- 添加足迹弹窗 -->
+  <view wx:if="{{fpModalOpen}}" class="modal-mask" bindtap="closeFootprintModal">
+    <view class="modal-card" catchtap="noop">
+      <view class="modal-head"><view class="modal-title">📍 添加足迹</view><view class="modal-close" bindtap="closeFootprintModal">×</view></view>
+      <view class="card-sub">城市名称（如：杭州 / 东京），系统自动推断省份。</view>
+      <input class="input" placeholder="城市名称" value="{{fpCity}}" bindinput="onFpCity" style="margin:10px 0;" />
+      <input class="input" placeholder="访问日期 YYYY-MM-DD（可留空）" value="{{fpDate}}" bindinput="onFpDate" style="margin-bottom:10px;" />
+      <input class="input" placeholder="备注（可留空）" value="{{fpNote}}" bindinput="onFpNote" style="margin-bottom:12px;" />
+      <button class="btn block" bindtap="confirmFootprint">✓ 保存足迹</button>
+    </view>
+  </view>
+
+  <!-- 隐私授权弹窗（合规：使用 chooseAvatar / 昵称前需用户同意） -->
+  <view wx:if="{{privacyShow}}" class="modal-mask" catchtap="noop">
+    <view class="modal-card" catchtap="noop">
+      <view class="modal-head">
+        <view class="modal-title">隐私授权提示</view>
+        <view class="modal-close" bindtap="onAgreePrivacy">×</view>
+      </view>
+      <view class="meta" style="line-height:1.7;margin:10px 0 16px;">感谢使用鸭鸭·个人工作台。我们会在《隐私保护指引》范围内收集你选择的头像与昵称，仅用于个人工作台展示，不会对外公开。请阅读并同意后继续使用。</view>
+      <view style="display:flex;gap:10px;">
+        <button class="btn ghost" bindtap="openPrivacyContract" style="flex:1;">查看协议</button>
+        <button class="btn primary" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="onAgreePrivacy" style="flex:1;">同意并继续</button>
+      </view>
+      <view style="text-align:center;margin-top:12px;"><text style="color:var(--primary);font-size:13px;" bindtap="onAgreePrivacy">暂不使用</text></view>
+    </view>
+  </view>
+
+</view>

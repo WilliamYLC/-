@@ -1,0 +1,9 @@
+{
+  "name": "ocr",
+  "version": "1.0.0",
+  "description": "云端 OCR 文字识别（百度智能云），绕过个人小程序插件限制",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

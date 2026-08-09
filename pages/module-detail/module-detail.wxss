@@ -1,0 +1,15 @@
+/* pages/module-detail/module-detail.wxss —— 详情页视觉（对齐源文件卡片/弹窗） */
+.mood-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.mood-emoji { font-size: 34px; opacity: 0.5; padding: 4px; }
+.mood-emoji.selected { opacity: 1; transform: scale(1.15); }
+
+/* 弹窗（对齐 .modal-card） */
+.modal-mask {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35);
+  z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.modal-card {
+  background: #fff; border-radius: 24px; width: 100%; max-width: 420px;
+  padding: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+.modal-title { font-size: 18px; font-weight: 800; color: var(--primary-dark); margin-bottom: 4px; }

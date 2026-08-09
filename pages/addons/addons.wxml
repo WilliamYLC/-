@@ -1,0 +1,22 @@
+<!-- pages/addons/addons.wxml -->
+<view class="page">
+  <view class="hint">
+    <view class="hint-title">添加项</view>
+    <view class="hint-sub">勾选你想用的工作台模块，随时可改。未勾选的不会出现在你的工作台。</view>
+  </view>
+
+  <block wx:for="{{groups}}" wx:key="category" wx:for-item="g">
+    <view class="cat-row">
+      <text class="cat-tag">{{g.items.length}}</text>
+      <text class="cat-name">{{g.category}}</text>
+    </view>
+    <view class="module-card" wx:for="{{g.items}}" wx:key="id" wx:for-item="m">
+      <view class="module-icon">{{m.tag}}</view>
+      <view class="module-body">
+        <view class="module-name">{{m.name}}</view>
+        <view class="module-desc">{{m.desc}}</view>
+      </view>
+      <switch checked="{{m.on}}" color="#B57EDC" data-id="{{m.id}}" bindchange="toggle" />
+    </view>
+  </block>
+</view>

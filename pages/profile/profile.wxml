@@ -1,0 +1,29 @@
+<!-- pages/profile/profile.wxml -->
+<view class="page">
+  <!-- 品牌头部 -->
+  <view class="brand-header">
+    <image class="brand-avatar" src="{{userAvatar}}" mode="aspectFit" />
+    <view class="brand-name">{{userName}}</view>
+    <view class="brand-sub">个人工作台 · 记录轻盈每一天</view>
+  </view>
+
+  <view class="card">
+    <view class="card-label">我的账号</view>
+    <view class="oid">{{openidMask}}</view>
+    <view class="tip">数据仅你本人可见（按微信 OPENID 自动隔离）</view>
+  </view>
+
+  <view class="card">
+    <view class="card-label">今日小结</view>
+    <view class="line" wx:for="{{lines}}" wx:key="*this">{{item}}</view>
+  </view>
+
+  <button class="share-btn" bindtap="genImage">生成今日小结图</button>
+  <button class="ghost-btn" open-type="share">转发小程序给好友</button>
+
+  <view wx:if="{{canvasVisible}}" class="canvas-wrap">
+    <canvas type="2d" id="shareCanvas" class="share-canvas"></canvas>
+    <button class="share-btn" bindtap="saveImage">保存到相册</button>
+    <view class="tip">保存后可发到朋友圈或私聊，分享的是图片，不会泄露原始数据。</view>
+  </view>
+</view>

@@ -1,0 +1,17 @@
+# 依赖（微信开发者工具「云端安装依赖」会自动 npm install，无需提交）
+node_modules/
+miniprogram_npm/
+
+# 本地 IDE 私有配置（机器相关，非源码）
+project.private.config.json
+
+# 日志
+*.log
+
+# 分析 / 验收产物（非小程序源码，是本地对比页）
+outputs/
+
+# ⚠️ 含真实百度 API 密钥，禁止入库！
+# 本地保留真实 config.js 供 DevTools 部署；clone 后用同目录 config.example.js 重建。
+cloudfunctions/tts/config.js
+cloudfunctions/ocr/config.js
