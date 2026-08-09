@@ -271,8 +271,9 @@
             <input class="input" type="digit" placeholder="卡路里" value="{{dietCal}}" bindinput="onDietCal" style="flex:0.5;" />
           </view>
           <view class="input-row"><input class="input" placeholder="吃了什么" value="{{dietContent}}" bindinput="onDietContent" /><button class="btn sm" bindtap="addDiet">添加</button></view>
+          <view class="input-row"><input class="input" type="digit" placeholder="食用份量(g)，填后自动估算整份热量" value="{{dietGrams}}" bindinput="onDietGrams" /></view>
           <button class="btn block" bindtap="onDietPhoto">📷 拍照 / 相册识别食物热量</button>
-          <view class="hint">💡 拍/选食物图可自动识别菜名与约 100g 卡路里估算并填入；也可手动填写。</view>
+          <view class="hint">💡 拍/选食物图自动识别菜名与每 100g 热量；填「食用份量」后按「每100g × 份量」自动算出整份卡路里。也可手动填写。</view>
           <view class="list">
             <view class="list-item" wx:for="{{dietList}}" wx:key="_id"><view class="item-main"><view class="title-row">{{item.content}}</view><view class="meta">{{item.meal}} · {{item.calories}} kcal · {{item.date}}</view></view><view class="del-btn" data-id="{{item._id}}" bindtap="delDiet">×</view></view>
             <view wx:if="{{dietList.length===0}}" class="empty">今天还没记录饮食</view>

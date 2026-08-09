@@ -213,7 +213,7 @@ Page({
     // 五行（lunar-driven，7 天 chips）
     wxDays: WX_DAYS, wxDayIdx: 0, wxData: null, wxDataArr: [],
     // 饮食
-    dietCal: '', dietContent: '', dietList: [], dietMeals: ['早餐', '午餐', '晚餐', '加餐'], dietMeal: '午餐', dietMealIndex: 1,
+    dietCal: '', dietContent: '', dietGrams: '', dietList: [], dietMeals: ['早餐', '午餐', '晚餐', '加餐'], dietMeal: '午餐', dietMealIndex: 1,
     // 饮食计划（独立 sub-section）
     dietPlanDate: '', dietPlanMeal: '早餐', dietPlanMealIdx: 0,
     dietPlanContent: '', dietPlanCal: '', dietPlanList: [],
@@ -896,11 +896,19 @@ Page({
   onDietCal(e) { this.setData({ dietCal: e.detail.value }); },
   onDietMeal(e) { const i = parseInt(e.detail.value); this.setData({ dietMealIndex: i, dietMeal: this.data.dietMeals[i] }); },
   onDietContent(e) { this.setData({ dietContent: e.detail.value }); },
+  onDietGrams(e) {
+    const g = parseFloat(e.detail.value);
+    this.setData({ dietGrams: e.detail.value });
+    // 已识别过食物（_dietCaloriePer100 有每100g热量）→ 按「每100g × 份量」自动算整份卡路里
+    if (this._dietCaloriePer100 && !isNaN(g) && g > 0) {
+      this.setData({ dietCal: String(Math.round(this._dietCaloriePer100 / 100 * g)) });
+    }
+  },
   async addDiet() {
     if (!this.data.dietContent.trim()) return;
     const ok = await this.safeText(this.data.dietContent); if (!ok) return;
     db.collection('records').add({ data: { module: 'diet', content: this.data.dietContent, meal: this.data.dietMeal, calories: this.data.dietCal || 0, date: today(), createTime: db.serverDate() } })
-      .then(() => { this.setData({ dietContent: '', dietCal: '' }); this.loadDiet(); this.loadDashboard(); });
+      .then(() => { this._dietCaloriePer100 = 0; this.setData({ dietContent: '', dietCal: '', dietGrams: '' }); this.loadDiet(); this.loadDashboard(); });
   },
   delDiet(e) { db.collection('records').doc(e.currentTarget.dataset.id).remove().then(() => this.loadDiet()); },
   // 饮食计划
@@ -1218,9 +1226,13 @@ Page({
     wx.chooseMedia({
       count: 1, mediaType: ['image'], sourceType: ['album', 'camera'],
       success: async (res) => {
-        const fp = res.tempFiles[0].tempFilePath;
+        const fp0 = res.tempFiles[0].tempFilePath;
         wx.showLoading({ title: '识别中...' });
         try {
+          // 前端压缩：避免原图过大（>4MB）被百度接口拒绝；压缩失败降级用原图
+          const fp = await new Promise((resolve) => {
+            wx.compressImage({ src: fp0, quality: 70, success: (c) => resolve(c.tempFilePath), fail: () => resolve(fp0) });
+          });
           const up = await wx.cloud.uploadFile({ cloudPath: 'ocr/' + Date.now() + '.jpg', filePath: fp });
           const callRet = await wx.cloud.callFunction({ name: 'ocr', data: { fileID: up.fileID, action } });
           wx.hideLoading();
@@ -1229,9 +1241,14 @@ Page({
           if (action === 'food') {
             const top = (r.foods && r.foods[0]) || null;
             if (!top) { wx.showToast({ title: '未识别到食物，请手动输入', icon: 'none', duration: 2500 }); return; }
-            const cal = parseInt(top.calorie, 10);
-            that.setData({ dietContent: top.name, dietCal: isNaN(cal) ? '' : String(cal) });
-            wx.showToast({ title: '识别：' + top.name + (top.calorie ? ' 约' + top.calorie + ' kcal/100g' : ''), icon: 'none', duration: 2500 });
+            const per100 = parseInt(top.calorie, 10);
+            that._dietCaloriePer100 = isNaN(per100) ? 0 : per100;
+            const g = parseFloat(that.data.dietGrams);
+            let total = that._dietCaloriePer100;
+            if (!isNaN(g) && g > 0 && that._dietCaloriePer100) total = Math.round(that._dietCaloriePer100 / 100 * g);
+            that.setData({ dietContent: top.name, dietCal: String(total) });
+            const note = (that._dietCaloriePer100 ? ' 约' + that._dietCaloriePer100 + ' kcal/100g' : '') + (total !== that._dietCaloriePer100 ? ' 整份约' + total : '');
+            wx.showToast({ title: '识别：' + top.name + note, icon: 'none', duration: 2800 });
           } else {
             that.setData({ [field]: r.text });
             wx.showToast({ title: '识别成功', icon: 'success' });
