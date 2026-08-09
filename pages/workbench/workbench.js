@@ -39,6 +39,9 @@ const DASH_META = {
   feeling:    { emoji:'📜', name:'感受体验', descDone:'已记录今日感受', descEmpty:'写下今日感受' }
 };
 
+// 饮食份量单位 → 折算克数（估算基准，可按需调整）
+const DIET_UNIT_G = { '克': 1, '碗': 150, '个': 50, '份': 100 };
+
 // 待办分类 + 图标（对齐源）
 const TODO_CAT_ICONS = [
   { name:'工作', icon:'💼' },{ name:'个人', icon:'👤' },{ name:'购物', icon:'🛒' },
@@ -213,7 +216,7 @@ Page({
     // 五行（lunar-driven，7 天 chips）
     wxDays: WX_DAYS, wxDayIdx: 0, wxData: null, wxDataArr: [],
     // 饮食
-    dietCal: '', dietContent: '', dietGrams: '', dietList: [], dietMeals: ['早餐', '午餐', '晚餐', '加餐'], dietMeal: '午餐', dietMealIndex: 1,
+    dietCal: '', dietContent: '', dietPortion: '', dietPortionUnits: ['克', '碗', '个', '份'], dietPortionIdx: 0, dietList: [], dietMeals: ['早餐', '午餐', '晚餐', '加餐'], dietMeal: '午餐', dietMealIndex: 1,
     // 饮食计划（独立 sub-section）
     dietPlanDate: '', dietPlanMeal: '早餐', dietPlanMealIdx: 0,
     dietPlanContent: '', dietPlanCal: '', dietPlanList: [],
@@ -896,19 +899,34 @@ Page({
   onDietCal(e) { this.setData({ dietCal: e.detail.value }); },
   onDietMeal(e) { const i = parseInt(e.detail.value); this.setData({ dietMealIndex: i, dietMeal: this.data.dietMeals[i] }); },
   onDietContent(e) { this.setData({ dietContent: e.detail.value }); },
-  onDietGrams(e) {
-    const g = parseFloat(e.detail.value);
-    this.setData({ dietGrams: e.detail.value });
-    // 已识别过食物（_dietCaloriePer100 有每100g热量）→ 按「每100g × 份量」自动算整份卡路里
-    if (this._dietCaloriePer100 && !isNaN(g) && g > 0) {
-      this.setData({ dietCal: String(Math.round(this._dietCaloriePer100 / 100 * g)) });
-    }
+  // 份量：数量 + 单位（克/碗/个/份），克数 = 数量 × 单位对应克数，再按每100g热量算整份
+  getDietGrams() {
+    const unit = this.data.dietPortionUnits[this.data.dietPortionIdx] || '克';
+    const n = parseFloat(this.data.dietPortion);
+    if (isNaN(n) || n <= 0) return 0;
+    return Math.round(n * (DIET_UNIT_G[unit] || 1));
+  },
+  applyDietCal() {
+    const per100 = this._dietCaloriePer100 || 0;
+    const g = this.getDietGrams();
+    if (per100 && g > 0) this.setData({ dietCal: String(Math.round(per100 / 100 * g)) });
+  },
+  onDietPortion(e) { this.setData({ dietPortion: e.detail.value }); this.applyDietCal(); },
+  onDietPortionUnit(e) {
+    const i = parseInt(e.detail.value, 10);
+    this.setData({ dietPortionIdx: i });
+    this.applyDietCal();
+  },
+  onDietPreset(e) {
+    const g = parseInt(e.currentTarget.dataset.g, 10);
+    this.setData({ dietPortion: String(g), dietPortionIdx: 0 });
+    this.applyDietCal();
   },
   async addDiet() {
     if (!this.data.dietContent.trim()) return;
     const ok = await this.safeText(this.data.dietContent); if (!ok) return;
     db.collection('records').add({ data: { module: 'diet', content: this.data.dietContent, meal: this.data.dietMeal, calories: this.data.dietCal || 0, date: today(), createTime: db.serverDate() } })
-      .then(() => { this._dietCaloriePer100 = 0; this.setData({ dietContent: '', dietCal: '', dietGrams: '' }); this.loadDiet(); this.loadDashboard(); });
+      .then(() => { this._dietCaloriePer100 = 0; this.setData({ dietContent: '', dietCal: '', dietPortion: '' }); this.loadDiet(); this.loadDashboard(); });
   },
   delDiet(e) { db.collection('records').doc(e.currentTarget.dataset.id).remove().then(() => this.loadDiet()); },
   // 饮食计划
@@ -1243,9 +1261,9 @@ Page({
             if (!top) { wx.showToast({ title: '未识别到食物，请手动输入', icon: 'none', duration: 2500 }); return; }
             const per100 = parseInt(top.calorie, 10);
             that._dietCaloriePer100 = isNaN(per100) ? 0 : per100;
-            const g = parseFloat(that.data.dietGrams);
+            const g = that.getDietGrams();
             let total = that._dietCaloriePer100;
-            if (!isNaN(g) && g > 0 && that._dietCaloriePer100) total = Math.round(that._dietCaloriePer100 / 100 * g);
+            if (g > 0 && that._dietCaloriePer100) total = Math.round(that._dietCaloriePer100 / 100 * g);
             that.setData({ dietContent: top.name, dietCal: String(total) });
             const note = (that._dietCaloriePer100 ? ' 约' + that._dietCaloriePer100 + ' kcal/100g' : '') + (total !== that._dietCaloriePer100 ? ' 整份约' + total : '');
             wx.showToast({ title: '识别：' + top.name + note, icon: 'none', duration: 2800 });

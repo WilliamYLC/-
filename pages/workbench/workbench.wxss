@@ -165,6 +165,9 @@ view { line-height: 1.4; }
 /* 五行七天切换 */
 .lucky-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
 .lucky-chip { padding: 6px 12px; border-radius: 14px; background: var(--tint); font-size: 13px; font-weight: 600; color: var(--primary-dark); }
+.diet-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
+.diet-chip { padding: 6px 14px; border-radius: 16px; background: var(--tint); font-size: 13px; font-weight: 700; color: var(--primary-dark); border: 1px solid rgba(181, 126, 220, 0.25); }
+.diet-chip:active { background: var(--primary); color: #fff; }
 .wux-line { font-size: 13px; color: var(--text); margin: 3px 0; }
 .wux-line .k { color: var(--muted); }
 
