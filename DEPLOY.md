@@ -2,7 +2,8 @@
 
 > 适用项目：`yaya-workbench/`
 > 个人主体小程序无法使用插件（OCR/同声传译），改用云函数 + 百度智能云实现 TTS / ASR / OCR。
-> 三个云函数：`tts`（英语朗读 + 语音输入）、`ocr`（拍照识别）、`security`（内容安全，文本敏感词审核，fail-open）
+> 三个云函数：`tts`（英语朗读 + 语音输入）、`ocr`（拍照识别文字 / 食物热量识别）、`security`（内容安全，文本敏感词审核，fail-open）
+> 注意：`ocr` 的「食物热量识别」依赖百度**图像识别-菜品识别**产品（与文字识别同账号、可复用同一组 Key），需在百度控制台开通。
 
 ---
 
@@ -12,7 +13,7 @@
 | --- | --- |
 | 微信云开发已开通，环境 ID = `cloud1-d6g3kvfyuf44f11a6` | ✅ 已配在 `app.js` |
 | 个人主体小程序 AppID = `wx44b8c212d362a20b` | ✅ 已配在 `project.config.json` |
-| 百度智能云账号 + 已创建「语音技术」和「文字识别」应用，拿到 API Key / Secret Key | ⏳ 需要你操作 |
+| 百度智能云账号 + 已创建「语音技术」「文字识别」「图像识别」应用，拿到 API Key / Secret Key（可同一组 Key） | ⏳ 需要你操作 |
 | `node_modules` 已装在云函数目录 | ⏳ 需要你操作 |
 
 > `app.json` 已**未声明任何插件**（个人账号插件系统整体关闭，声明了反而编译失败）。
@@ -26,7 +27,7 @@
 1. 复制模板：`cloudfunctions/tts/config.example.js` → 同目录 `config.js`（ocr 同理）
 2. 把里面的 `YOUR_API_KEY` / `YOUR_SECRET_KEY` 占位符替换成你自己的真实 Key
 
-- 获取 Key：https://console.bce.baidu.com/ → 人工智能 → 语音技术（TTS/ASR）/ 文字识别（OCR）创建应用
+- 获取 Key：https://console.bce.baidu.com/ → 人工智能 → 语音技术（TTS/ASR）/ 文字识别（OCR）/ 图像识别（菜品识别，用于食物热量）创建应用（可同一组 Key）
 - 本地 `config.js`（真实密钥）会被 DevTools 正常上传到云端，不受影响。
 
 > 没账号的话：访问 https://console.bce.baidu.com/ → 注册并完成实名 → 「人工智能」→「语音技术」创建应用（同样路径「文字识别」创建 OCR 应用）→ 在应用详情页能看到 AK 和 SK。

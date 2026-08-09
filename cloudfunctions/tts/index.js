@@ -40,6 +40,20 @@ function postForm(url, body) {
   });
 }
 
+function postJson(url, obj) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(obj);
+    const u = new URL(url);
+    const req = https.request({
+      hostname: u.hostname, path: u.pathname + u.search, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, res => {
+      const chunks = []; res.on('data', c => chunks.push(c)); res.on('end', () => resolve({ status: res.statusCode, buf: Buffer.concat(chunks), contentType: res.headers['content-type'] }));
+    });
+    req.on('error', reject); req.write(body); req.end();
+  });
+}
+
 exports.main = async (event) => {
   const { action, text, fileID, lang = 'en' } = event;
   if (!cfg.baidu.apiKey || cfg.baidu.apiKey === 'YOUR_API_KEY') {
@@ -67,8 +81,11 @@ exports.main = async (event) => {
       if (!fileID) return { ok: false, code: 'NO_FILE' };
       const { fileContent } = await cloud.downloadFile({ fileID });
       const base64 = fileContent.toString('base64');
-      const body = qs.stringify({ speech: base64, format: 'wav', rate: 16000, channel: 1, cuid: 'yaya', token, len: fileContent.length });
-      const r = await postForm('https://vop.baidu.com/server_api', body);
+      // 关键修复：百度语音识别(server_api)要求 JSON 请求体 + Content-Type: application/json，
+      // 之前用 form-urlencoded 会被百度返回「json read error」（err_msg: json read error）。
+      const r = await postJson('https://vop.baidu.com/server_api', {
+        format: 'wav', rate: 16000, channel: 1, cuid: 'yaya', token, len: fileContent.length, speech: base64
+      });
       let j;
       try { j = JSON.parse(r.buf.toString()); } catch (e) { return { ok: false, code: 'ASR_PARSE', msg: '识别结果解析失败' }; }
       if (j.err_no === 0 && j.result) return { ok: true, text: j.result[0] };

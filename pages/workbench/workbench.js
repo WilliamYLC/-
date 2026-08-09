@@ -1208,9 +1208,9 @@ Page({
     db.collection('records').add({ data: { module: 'travel', title: txt.slice(0, 20), desc: txt, date: today(), createTime: db.serverDate() } })
       .then(() => { this.setData({ travelPaste: '' }); this.loadTravel(); });
   },
-  onTravelPhoto() { this._ocrPhoto('travelPaste'); },
-  onDietPhoto() { this._ocrPhoto('dietContent'); },
-  _ocrPhoto(field) {
+  onTravelPhoto() { this._ocrPhoto('travelPaste', 'text'); },
+  onDietPhoto() { this._ocrPhoto('dietContent', 'food'); },
+  _ocrPhoto(field, action = 'text') {
     const that = this;
     // 隐私授权：chooseMedia 涉及相册/摄像头，要求后台声明后再走
     this._ensurePrivacy('chooseMedia').then(ok => {
@@ -1222,11 +1222,20 @@ Page({
         wx.showLoading({ title: '识别中...' });
         try {
           const up = await wx.cloud.uploadFile({ cloudPath: 'ocr/' + Date.now() + '.jpg', filePath: fp });
-          const callRet = await wx.cloud.callFunction({ name: 'ocr', data: { fileID: up.fileID } });
+          const callRet = await wx.cloud.callFunction({ name: 'ocr', data: { fileID: up.fileID, action } });
           wx.hideLoading();
           const r = callRet && callRet.result;
-          if (r && r.ok) { that.setData({ [field]: r.text }); wx.showToast({ title: '识别成功', icon: 'success' }); }
-          else wx.showToast({ title: (r && r.msg) || '识别失败', icon: 'none', duration: 2500 });
+          if (!r || !r.ok) { wx.showToast({ title: (r && r.msg) || '识别失败', icon: 'none', duration: 2500 }); return; }
+          if (action === 'food') {
+            const top = (r.foods && r.foods[0]) || null;
+            if (!top) { wx.showToast({ title: '未识别到食物，请手动输入', icon: 'none', duration: 2500 }); return; }
+            const cal = parseInt(top.calorie, 10);
+            that.setData({ dietContent: top.name, dietCal: isNaN(cal) ? '' : String(cal) });
+            wx.showToast({ title: '识别：' + top.name + (top.calorie ? ' 约' + top.calorie + ' kcal/100g' : ''), icon: 'none', duration: 2500 });
+          } else {
+            that.setData({ [field]: r.text });
+            wx.showToast({ title: '识别成功', icon: 'success' });
+          }
         } catch (err) { wx.hideLoading(); wx.showToast({ title: 'ocr 云函数未部署或失败：' + (err.errMsg || err.message || '未知'), icon: 'none', duration: 3000 }); }
       },
       fail: (err) => {
