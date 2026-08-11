@@ -248,7 +248,7 @@
                 <text class="wux-icon">{{row.icon}}</text>
               </view>
               <view class="wux-info">
-                <view class="wux-line1"><text class="wux-level {{row.cls}}">{{row.level}}</text><text class="wux-tag">《{{row.tag}}》</text></view>
+                <view class="wux-line1"><text class="wux-level">{{row.level}}《{{row.tag}}》</text></view>
                 <view class="wux-line2">五行属{{row.element}}</view>
                 <view class="wux-line3">{{row.colors}}</view>
                 <view class="wux-line4">{{row.desc}}</view>

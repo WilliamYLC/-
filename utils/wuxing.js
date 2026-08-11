@@ -37,25 +37,22 @@ const ZHI_ELEMENT = {
   辰: '土', 戌: '土', 丑: '土', 未: '土'
 };
 
-// 五行 -> 色名表 + 代表色（用于显示色块）
-const ELEMENT_PALETTE = {
-  木: { name: '绿色系', list: ['绿色', '青色', '翠色', '浅绿系'], hex: ['#2ECC71', '#27AE60', '#16A085', '#1ABC9C'] },
-  火: { name: '红色系', list: ['红色', '粉色', '橙色', '紫色', '花色系'], hex: ['#E74C3C', '#FF6B9D', '#FF8C42', '#9B59B6', '#FF4757'] },
-  土: { name: '黄色系', list: ['黄色', '咖啡色', '棕色', '卡其', '褐色系'], hex: ['#F1C40F', '#A0522D', '#8B4513', '#DEB887', '#D4A017'] },
-  金: { name: '白色系', list: ['白色', '银色', '杏色', '乳白色系'], hex: ['#FFFFFF', '#C0C0C0', '#FFE4B5', '#FAF0E6', '#FFD700'] },
-  水: { name: '黑色系', list: ['黑色', '蓝色', '灰色系'], hex: ['#2C3E50', '#3498DB', '#5D6D7E', '#95A5A6', '#1F2D3D'] }
+// 五行 -> 颜色名数组（与原版链接 WUXING_COLORS 完全一致）
+const WUXING_COLORS = {
+  '金': ['白色', '银色', '杏色', '乳白色系'],
+  '木': ['绿色', '青色', '翠色', '浅绿系'],
+  '水': ['黑色', '蓝色', '灰色系'],
+  '火': ['红色', '粉色', '橙色', '紫色', '花色系'],
+  '土': ['黄色', '咖啡', '棕色', '卡其', '褐色系']
 };
-
-// 五级 emoji 图标（避免白底白字消失问题，每级一个有辨识度的图案）
-const LEVEL_ICON = {
-  '吉': '❤️',   // 红心（红/火）
-  '次吉': '🌿',  // 树叶（绿/木）
-  '平': '⚪',   // 白圆（金/白）
-  '较差': '🖤',  // 黑心（水/黑）
-  '不宜': '🟠'   // 金橙球（土/黄）
+// 五行 -> 方块背景色（与原版链接 WUXING_BG 完全一致）
+const WUXING_BG = {
+  '金': '#E5E7EB', '木': '#10B981', '水': '#374151', '火': '#EF4444', '土': '#F59E0B'
 };
+// 五行 -> 标识 emoji（与原版链接 WUXING_EMOJI 一致：按五行元素取，而非按吉凶等级）
+const WUXING_EMOJI = { '金': '⚪', '木': '🌿', '水': '🖤', '火': '❤️', '土': '🟡' };
 
-// 等级配置（吉/次吉/平/较差/不宜）
+// 等级配置（吉/次吉/平/较差/不宜）—— name/desc 与原版链接逐字一致
 function buildRanking(selfEl) {
   return [
     {
@@ -63,28 +60,28 @@ function buildRanking(selfEl) {
       tag: '贵人色',
       element: SHENG_NEXT[selfEl],
       cls: 'lvl-best',
-      desc: `与当日五行相生，即大环境生你的意思，易招贵人，易获扶助，异性缘会比平日增加。`
+      desc: `与当日五行相生；为贵人色，即大环境生你的意思，易招贵人，易获扶助，异性缘会比平日增加。`
     },
     {
       level: '次吉',
       tag: '合作色',
       element: selfEl,
       cls: 'lvl-good',
-      desc: `与当日五行相符，为幸运色，与他人合作利益时建议穿这类颜色，如商务沟通、谈判等。`
+      desc: `与当日五行相符，为幸运色，与他人合作利益时建议穿这类型颜色，如商务沟通、谈判等。`
     },
     {
       level: '平',
-      tag: '备选色',
+      tag: '奋斗进财色',
       element: KE_BY[selfEl],
       cls: 'lvl-mid',
-      desc: `与当日五行相克，为备选进取色，你需要付出更多的努力，如果成功能得到较大的收获。`
+      desc: `与当日五行相克，为奋斗进财色，你需要付出更多的努力，如果成功能得到较大的收获。`
     },
     {
       level: '较差',
       tag: '消耗色',
       element: SHENG_PREV2[selfEl],
       cls: 'lvl-bad',
-      desc: `生当日五行，即你要去生大环境的意思，万事会比较累，适合内心强大的人接受挑战。`
+      desc: `生当日五行，即你要去生大环境的意思，万事会较累，适合内心强大的人挑战下。`
     },
     {
       level: '不宜',
@@ -98,11 +95,11 @@ function buildRanking(selfEl) {
 
 function decorateRanking(ranking) {
   return ranking.map(row => {
-    const pal = ELEMENT_PALETTE[row.element] || {};
+    const list = WUXING_COLORS[row.element] || [];
     return Object.assign({}, row, {
-      colors: pal.list ? pal.list.join('、') : '',
-      hex: pal.hex ? pal.hex[0] : '#999',
-      icon: LEVEL_ICON[row.level] || '◇',
+      colors: list.join('、'),
+      hex: WUXING_BG[row.element] || '#999',
+      icon: WUXING_EMOJI[row.element] || '◇',
       elementChar: row.element
     });
   });
