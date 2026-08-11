@@ -94,8 +94,9 @@
               <input class="input" placeholder="添加今日待办…" value="{{newTodo}}" bindinput="onTodoInput" />
               <button class="btn sm" bindtap="addTodo" data-bucket="today">添加</button>
             </view>
-            <view class="list">
-              <view class="list-item {{item.done?'done':''}}" wx:for="{{todoToday}}" wx:key="_id">
+            <view class="list" id="todoList-today">
+              <view class="list-item {{item.done?'done':''}} {{todoDrag.active && todoDrag.bucket==='today' && idx===todoDrag.from ? 'dragging':''}} {{todoDrag.active && todoDrag.bucket==='today' && idx===todoDrag.to && idx!==todoDrag.from ? 'drag-over':''}}" wx:for="{{todoToday}}" wx:for-index="idx" wx:key="_id">
+                <view class="drag-handle" catchtouchstart="onTodoDragStart" catchtouchmove="onTodoDragMove" catchtouchend="onTodoDragEnd" data-bucket="today" data-index="{{idx}}">⠿</view>
                 <view class="item-check {{item.done?'on':''}}" data-id="{{item._id}}" bindtap="toggleTodo">✓</view>
                 <view class="item-main"><view class="title-row">{{item.content}}</view><view class="meta">{{item.cat}}</view></view>
                 <view class="del-btn" data-id="{{item._id}}" bindtap="delTodo">×</view>
@@ -114,8 +115,9 @@
               <input class="input" placeholder="内容" value="{{todoInlineSoon}}" data-bucket="soon" bindinput="onTodoInline" style="flex:1;" />
               <button class="btn sm" bindtap="addTodoInline" data-bucket="soon">添加</button>
             </view>
-            <view class="list">
-              <view class="list-item {{item.done?'done':''}}" wx:for="{{todoSoon}}" wx:key="_id">
+            <view class="list" id="todoList-soon">
+              <view class="list-item {{item.done?'done':''}} {{todoDrag.active && todoDrag.bucket==='soon' && idx===todoDrag.from ? 'dragging':''}} {{todoDrag.active && todoDrag.bucket==='soon' && idx===todoDrag.to && idx!==todoDrag.from ? 'drag-over':''}}" wx:for="{{todoSoon}}" wx:for-index="idx" wx:key="_id">
+                <view class="drag-handle" catchtouchstart="onTodoDragStart" catchtouchmove="onTodoDragMove" catchtouchend="onTodoDragEnd" data-bucket="soon" data-index="{{idx}}">⠿</view>
                 <view class="item-check {{item.done?'on':''}}" data-id="{{item._id}}" bindtap="toggleTodo">✓</view>
                 <view class="item-main"><view class="title-row">{{item.content}}</view><view class="meta">{{item.cat}} · {{item.dueDate}}</view></view>
                 <view class="del-btn" data-id="{{item._id}}" bindtap="delTodo">×</view>
@@ -134,8 +136,9 @@
               <input class="input" placeholder="内容" value="{{todoInlineLater}}" data-bucket="later" bindinput="onTodoInline" style="flex:1;" />
               <button class="btn sm" bindtap="addTodoInline" data-bucket="later">添加</button>
             </view>
-            <view class="list">
-              <view class="list-item {{item.done?'done':''}}" wx:for="{{todoLater}}" wx:key="_id">
+            <view class="list" id="todoList-later">
+              <view class="list-item {{item.done?'done':''}} {{todoDrag.active && todoDrag.bucket==='later' && idx===todoDrag.from ? 'dragging':''}} {{todoDrag.active && todoDrag.bucket==='later' && idx===todoDrag.to && idx!==todoDrag.from ? 'drag-over':''}}" wx:for="{{todoLater}}" wx:for-index="idx" wx:key="_id">
+                <view class="drag-handle" catchtouchstart="onTodoDragStart" catchtouchmove="onTodoDragMove" catchtouchend="onTodoDragEnd" data-bucket="later" data-index="{{idx}}">⠿</view>
                 <view class="item-check {{item.done?'on':''}}" data-id="{{item._id}}" bindtap="toggleTodo">✓</view>
                 <view class="item-main"><view class="title-row">{{item.content}}</view><view class="meta">{{item.cat}} · {{item.dueDate || '不限'}}</view></view>
                 <view class="del-btn" data-id="{{item._id}}" bindtap="delTodo">×</view>

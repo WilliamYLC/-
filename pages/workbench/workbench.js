@@ -205,6 +205,7 @@ Page({
     todoCats: TODO_CAT_ICONS, todoCat: '工作', todoCatIcon: '💼',
     newTodo: '', todoList: [],
     todoToday: [], todoSoon: [], todoLater: [], todoTodayCount: 0, todoSoonCount: 0, todoLaterCount: 0,
+    todoDrag: { active: false, bucket: '', from: -1, to: -1 },
     todoInlineToday: '', todoInlineSoon: '', todoInlineLater: '',
     todoLaterRange: ['今天', '明天', '3 天后', '一周后', '一个月后', '未来（不限）'],
     todoLaterRangeIdx: 5, // 默认"未来"
@@ -589,26 +590,26 @@ Page({
   // ---------- 待办 ----------
   loadTodo() {
     const t = today();
-    // 7 天内
-    const soonStart = t;
     const soonEnd = (() => { const d = new Date(); d.setDate(d.getDate() + 7); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
-    db.collection('records').where({ module: 'daily_todo' }).orderBy('createTime', 'desc').limit(200).get()
+    db.collection('records').where({ module: 'daily_todo' }).limit(200).get()
       .then(res => {
         const list = res.data;
         // 三段分类：today=今天；soon=未来 7 天内（含明天）；later=7 天外或无 dueDate
         const today = [], soon = [], later = [];
         list.forEach(it => {
           const due = it.dueDate || (it.date ? it.date.slice(0,10) : '');
-          if (!due || due < soonStart) later.push(it);
-          else if (due === soonStart) today.push(it);
-          else if (due > soonStart && due <= soonEnd) soon.push(it);
+          if (!due || due < t) later.push(it);
+          else if (due === t) today.push(it);
+          else if (due > t && due <= soonEnd) soon.push(it);
           else later.push(it);
         });
+        // 桶内排序：未完成优先；同状态按手动 order 升序（对齐原版稳定排序保留手动顺序）
+        const sortBucket = (b) => b.sort((a, b2) => (a.done ? 1 : 0) - (b2.done ? 1 : 0) || (a.order || 0) - (b2.order || 0));
+        sortBucket(today); sortBucket(soon); sortBucket(later);
         const cnt = a => a.length;
-        // 把 todoCats 转字符串名称列表供 wxml
         this.setData({
           todoList: list,
-          todoToday: today.reverse(), todoSoon: soon.reverse(), todoLater: later.reverse(),
+          todoToday: today, todoSoon: soon, todoLater: later,
           todoTodayCount: cnt(today), todoSoonCount: cnt(soon), todoLaterCount: cnt(later),
           todoCount: list.length + ' 条'
         });
@@ -618,6 +619,46 @@ Page({
     const cat = e.currentTarget.dataset.cat;
     const icon = e.currentTarget.dataset.icon;
     this.setData({ todoCat: cat, todoCatIcon: icon });
+  },
+  // ===== 待办手动排序（触摸拖拽，对齐原版 ⠿ 手柄）=====
+  // 拖动项显示 .dragging(opacity:.4)，目标项显示 .drag-over(顶部 2px 主色插入线)，松手按桶 splice 重排并持久化 order
+  onTodoDragStart(e) {
+    const bucket = e.currentTarget.dataset.bucket;
+    const index = Number(e.currentTarget.dataset.index);
+    this._todoRects = [];
+    wx.createSelectorQuery().selectAll('#todoList-' + bucket + ' .list-item').boundingClientRect()
+      .exec((res) => {
+        const rects = (res && res[0]) || [];
+        this._todoRects = rects.map(r => ({ top: r.top, bottom: r.bottom }));
+      });
+    this.setData({ todoDrag: { active: true, bucket, from: index, to: index } });
+  },
+  onTodoDragMove(e) {
+    const rects = this._todoRects;
+    if (!rects || !rects.length) return;
+    const y = e.touches[0].clientY;
+    let to = rects.length - 1;
+    for (let i = 0; i < rects.length; i++) {
+      if (y < rects[i].bottom) { to = i; break; }
+    }
+    const dg = this.data.todoDrag;
+    if (dg.active && to !== dg.to) this.setData({ 'todoDrag.to': to });
+  },
+  onTodoDragEnd(e) {
+    const dg = this.data.todoDrag;
+    if (!dg.active) return;
+    const bucketKey = { today: 'todoToday', soon: 'todoSoon', later: 'todoLater' }[dg.bucket] || 'todoToday';
+    if (dg.from !== dg.to) {
+      const arr = (this.data[bucketKey] || []).slice();
+      const [moved] = arr.splice(dg.from, 1);
+      arr.splice(dg.to, 0, moved);
+      const updates = arr.map((it, i) => {
+        it.order = i;
+        return db.collection('records').doc(it._id).update({ data: { order: i } });
+      });
+      Promise.all(updates).catch(() => {}).then(() => { this.setData({ [bucketKey]: arr }); });
+    }
+    this.setData({ todoDrag: { active: false, bucket: '', from: -1, to: -1 } });
   },
   onTodoInput(e) { this.setData({ newTodo: e.detail.value }); },
   // 三段 inline 输入
@@ -666,7 +707,12 @@ Page({
     if (!content) { wx.showToast({ title: '请输入内容', icon: 'none' }); return; }
     const ok = await this.safeText(content); if (!ok) return;
     const d = dueDate || today();
-    db.collection('records').add({ data: { module: 'daily_todo', content, cat: this.data.todoCat, done: false, date: d, dueDate: d, createTime: db.serverDate() } })
+    // 计算桶内下一个 order（追加到末尾，保证新项排在最后）
+    const bucketKey = { today: 'todoToday', soon: 'todoSoon', later: 'todoLater' }[bucket] || 'todoToday';
+    const bucketArr = this.data[bucketKey] || [];
+    const maxOrder = bucketArr.reduce((m, x) => Math.max(m, x.order || 0), 0);
+    const order = maxOrder + 1;
+    db.collection('records').add({ data: { module: 'daily_todo', content, cat: this.data.todoCat, done: false, date: d, dueDate: d, order, createTime: db.serverDate() } })
       .then(() => {
         const upd = {};
         if (bucket === 'today') upd.newTodo = '';

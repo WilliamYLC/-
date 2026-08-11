@@ -160,6 +160,14 @@ view { line-height: 1.4; }
 .item-check { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; border: 2px solid var(--primary); display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff; background: transparent; }
 .item-check.on { background: var(--primary); }
 .del-btn { color: #9CA3AF; font-size: 18px; padding: 0 4px; }
+/* 待办拖拽排序（对齐原版 ⠿ 手柄交互） */
+.list-item.dragging { opacity: 0.4; }
+.list-item.drag-over { border-top: 2px solid var(--primary); margin-top: -1px; }
+.list-item .drag-handle {
+  width: 24px; display: flex; align-items: center; justify-content: center;
+  color: #C0C6CC; font-size: 16px; opacity: 0.6; flex-shrink: 0;
+}
+.list-item .drag-handle:active { opacity: 1; }
 .empty { text-align: center; color: var(--muted); font-size: 13px; padding: 22px 0; }
 
 /* 五行七天切换 */
